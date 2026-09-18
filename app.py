@@ -52,5 +52,44 @@ def create_user(): # Função que lida com a criação de um novo usuário. Ela 
     else:
         return jsonify({'message': 'Username and password are required'}), 400
 
+@app.route('/user/<int:user_id>', methods=['GET'])
+@login_required # This decorator ensures that the user must be logged in to access this route. If the user is not logged in, they will be redirected to the login page.
+def get_user(user_id): # Função que lida com a recuperação de informações de um usuário específico. Ela recebe o ID do usuário como parâmetro na URL, consulta o banco de dados para encontrar o usuário correspondente e retorna as informações do usuário em formato JSON. Se o usuário não for encontrado, a função retorna uma mensagem de erro apropriada.
+    user = User.query.get(user_id)
+
+    if user:
+        return jsonify({"username": user.username})
+    else:
+        return jsonify({"message": "user not found"}), 404
+
+@app.route('/user/<int:user_id>', methods=['PUT'])
+@login_required
+def update_user(user_id): 
+    data = request.json
+    user = User.query.get(user_id)
+
+    if user and data.get("password"):
+        user.password = data.get("password")
+        db.session.commit()
+        return jsonify({"message": f"User {user_id} updated sucessfuly"})
+    else:
+        return jsonify({"message": "user not found"}), 404
+    
+
+@app.route('/user/<int:user_id>', methods=['DELETE'])
+@login_required
+def delete_user(user_id):
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({"message": "User not found!"}), 404
+    
+    if user_id == current_user.id:
+        return jsonify({"message": "You cannot delete your own account!"}), 403
+    
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"message": "User deleted successfully"}), 200
+
 if __name__ == '__main__':
     app.run(debug=True)
