@@ -38,14 +38,13 @@ def logout(): # Função que lida com o logout do usuário. Ela é protegida pel
     return jsonify({'message': 'Logout successful'}), 200
 
 @app.route('/user', methods=['POST'])
-@login_required # This decorator ensures that the user must be logged in to access this route. If the user is not logged in, they will be redirected to the login page.
 def create_user(): # Função que lida com a criação de um novo usuário. Ela recebe os dados do usuário (nome de usuário e senha) via JSON, verifica se o nome de usuário já existe no banco de dados e, se não existir, cria um novo usuário e o adiciona ao banco de dados. Se o nome de usuário já existir ou se os dados estiverem incompletos, a função retorna uma mensagem de erro apropriada.
     data = request.json
     username = data.get('username')
     password = data.get('password')
 
     if username and password:
-        new_user = User(username=username, password=password)
+        new_user = User(username=username, password=password, role='user')
         db.session.add(new_user)
         db.session.commit()
         return jsonify({'message': 'User created successfully'}), 201
@@ -53,7 +52,7 @@ def create_user(): # Função que lida com a criação de um novo usuário. Ela 
         return jsonify({'message': 'Username and password are required'}), 400
 
 @app.route('/user/<int:user_id>', methods=['GET'])
-@login_required # This decorator ensures that the user must be logged in to access this route. If the user is not logged in, they will be redirected to the login page.
+@login_required
 def get_user(user_id): # Função que lida com a recuperação de informações de um usuário específico. Ela recebe o ID do usuário como parâmetro na URL, consulta o banco de dados para encontrar o usuário correspondente e retorna as informações do usuário em formato JSON. Se o usuário não for encontrado, a função retorna uma mensagem de erro apropriada.
     user = User.query.get(user_id)
 
@@ -68,6 +67,9 @@ def update_user(user_id):
     data = request.json
     user = User.query.get(user_id)
 
+    if user_id != current_user.id and current_user.role == 'user':
+        return jsonify({"message": "You are not authorized to update this user"}), 403
+    
     if user and data.get("password"):
         user.password = data.get("password")
         db.session.commit()
@@ -80,6 +82,9 @@ def update_user(user_id):
 @login_required
 def delete_user(user_id):
     user = User.query.get(user_id)
+
+    if current_user.role != 'admin':
+        return jsonify({"message": "You are not authorized to delete this user"}), 403
 
     if not user:
         return jsonify({"message": "User not found!"}), 404
